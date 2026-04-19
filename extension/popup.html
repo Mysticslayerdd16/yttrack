@@ -61,13 +61,11 @@
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.15s;
       text-align: center;
       line-height: 34px;
       text-decoration: none;
     }
     .btn:hover { background: #e84a3a; color: white; border-color: #e84a3a; }
-    .no-song { font-size: 12px; color: #555; text-align: center; padding: 8px 0; }
   </style>
 </head>
 <body>
@@ -79,20 +77,12 @@
     <div class="dot"></div>
     <span>Extension active</span>
   </div>
-  <div class="last-song" id="last-song">
+  <div class="last-song">
     <div class="last-label">Last tracked</div>
     <div class="last-title" id="last-title">Nothing yet</div>
     <div class="last-channel" id="last-channel">Play a song on YouTube</div>
   </div>
-  <a class="btn" href="YOUR_GITHUB_PAGES_URL" target="_blank">Open Dashboard ↗</a>
-
-  <script>
-    chrome.storage.local.get('lastSong', (data) => {
-      if (data.lastSong) {
-        document.getElementById('last-title').textContent = data.lastSong.title;
-        document.getElementById('last-channel').textContent = data.lastSong.channel;
-      }
-    });
-  </script>
+  <a class="btn" href="https://mysticslayerdd16.github.io/yttrack/" target="_blank">Open Dashboard ↗</a>
+  <script src="popup.js"></script>
 </body>
 </html>
