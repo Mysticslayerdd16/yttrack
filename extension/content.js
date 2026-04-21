@@ -52,8 +52,8 @@ function isLikelySong(title, channel, duration) {
   // Strong signals it is NOT a song
   if (NON_MUSIC_KEYWORDS.some(k => titleLow.includes(k))) return false;
 
-  // Duration heuristic: songs are usually 1.5 - 10 minutes
-  if (duration > 0 && (duration < 90 || duration > 600)) return false;
+  // Duration heuristic: songs are usually 45s - 60 minutes
+  if (duration > 0 && (duration < 45 || duration > 3600)) return false;
 
   // Channel name check
   if (MUSIC_CHANNELS.some(k => channelLow.includes(k))) return true;
