@@ -124,7 +124,6 @@
   display: flex;
   gap: 10px;
   margin-bottom: 2rem;
-  flex-wrap: wrap;
 }
 .stat-pill {
   flex: 1;
@@ -477,4 +476,77 @@
   color: var(--text);
   z-index: 100;
   pointer-events: none;
+}
+
+/* Overview grid */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.overview-item {
+  background: var(--bg3);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+}
+.overview-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.overview-label {
+  font-size: 11px;
+  font-family: var(--ff-mono);
+  color: var(--text2);
+}
+
+/* Vertical bar chart */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+  padding-top: 8px;
+}
+.bar-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+.bar-chart-track {
+  flex: 1;
+  width: 100%;
+  background: var(--bg4);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.bar-chart-fill {
+  width: 100%;
+  background: rgba(232,74,58,0.6);
+  border-radius: 4px;
+  transition: height 0.4s ease;
+  min-height: 2px;
+}
+.bar-chart-label {
+  font-size: 11px;
+  font-family: var(--ff-mono);
+  color: var(--text2);
+}
+.bar-chart-val {
+  font-size: 10px;
+  font-family: var(--ff-mono);
+  color: var(--text3);
+  min-height: 12px;
+}
+
+/* Stats bar wrap */
+.stats-bar {
+  flex-wrap: wrap;
 }

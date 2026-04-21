@@ -15,6 +15,9 @@ const GENRE_EMOJIS = {
   'Jazz': '🎺', 'Other': '🎵'
 };
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 function timeAgo(ts) {
   const d = Date.now() - new Date(ts).getTime();
   if (d < 60000) return 'just now';
@@ -26,6 +29,18 @@ function timeAgo(ts) {
 
 function isToday(ts) { return new Date(ts).toDateString() === new Date().toDateString(); }
 function isThisWeek(ts) { return Date.now() - new Date(ts).getTime() < 604800000; }
+
+function getDayKey(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function getWeekKey(ts) {
+  const d = new Date(ts);
+  const startOfYear = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${week}`;
+}
 
 export default function App() {
   const [songs, setSongs] = useState([]);
@@ -62,7 +77,6 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([fetchSongs(), fetchPlaylists()]).finally(() => setLoading(false));
-
     const channel = supabase
       .channel('songs-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, () => {
@@ -70,11 +84,9 @@ export default function App() {
         setExtActive(true);
       })
       .subscribe();
-
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'YTTRACK_PING') setExtActive(true);
     });
-
     return () => supabase.removeChannel(channel);
   }, [fetchSongs, fetchPlaylists]);
 
@@ -93,9 +105,7 @@ export default function App() {
     if (!newPlName.trim()) return;
     const icons = ['🔥', '🌙', '🌊', '⚡', '🎯', '🌿', '💫', '🎸'];
     const icon = icons[playlists.length % icons.length];
-    const { error } = await supabase
-      .from('playlists')
-      .insert({ name: newPlName.trim(), icon });
+    const { error } = await supabase.from('playlists').insert({ name: newPlName.trim(), icon });
     if (!error) {
       fetchPlaylists();
       setNewPlName('');
@@ -113,6 +123,7 @@ export default function App() {
 
   const favSongs = songs.filter(s => s.is_favorite);
   const todayCount = songs.filter(s => isToday(s.last_played_at)).length;
+  const totalPlays = songs.reduce((a, s) => a + (s.play_count || 0), 0);
   const topSongs = [...songs].sort((a, b) => b.play_count - a.play_count).slice(0, 5);
   const maxPlays = topSongs[0]?.play_count || 1;
 
@@ -124,6 +135,57 @@ export default function App() {
   const hourMap = new Array(24).fill(0);
   songs.forEach(s => { hourMap[new Date(s.last_played_at).getHours()] += s.play_count || 1; });
   const maxHour = Math.max(...hourMap) || 1;
+
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return { key: getDayKey(d), label: DAY_NAMES[d.getDay()], count: 0 };
+  });
+  songs.forEach(s => {
+    const key = getDayKey(s.last_played_at);
+    const day = last7Days.find(d => d.key === key);
+    if (day) day.count += s.play_count || 1;
+  });
+  const max7 = Math.max(...last7Days.map(d => d.count)) || 1;
+
+  const last4Weeks = Array.from({ length: 4 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (3 - i) * 7);
+    return { key: getWeekKey(d), label: `W${4 - (3 - i)}`, count: 0 };
+  });
+  songs.forEach(s => {
+    const key = getWeekKey(s.last_played_at);
+    const week = last4Weeks.find(w => w.key === key);
+    if (week) week.count += s.play_count || 1;
+  });
+  const max4w = Math.max(...last4Weeks.map(w => w.count)) || 1;
+
+  const dowMap = new Array(7).fill(0);
+  songs.forEach(s => { dowMap[new Date(s.last_played_at).getDay()] += s.play_count || 1; });
+  const maxDow = Math.max(...dowMap) || 1;
+  const mostActiveDay = dowMap.indexOf(Math.max(...dowMap));
+
+  const totalMins = totalPlays * 3.5;
+  const listeningHours = Math.floor(totalMins / 60);
+  const listeningMins = Math.round(totalMins % 60);
+
+  const daySet = new Set(songs.map(s => getDayKey(s.last_played_at)));
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    if (daySet.has(getDayKey(d))) streak++;
+    else break;
+  }
+
+  const channelMap = {};
+  songs.forEach(s => {
+    const ch = (s.channel || 'Unknown').replace(' - Topic', '');
+    channelMap[ch] = (channelMap[ch] || 0) + (s.play_count || 1);
+  });
+  const topChannels = Object.entries(channelMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const maxChannel = topChannels[0]?.[1] || 1;
 
   if (loading) return (
     <div className="loader">
@@ -143,7 +205,6 @@ export default function App() {
           </div>
           <span className="logo-text">yt<strong>track</strong></span>
         </div>
-
         <nav className="sidebar-nav">
           {[
             { id: 'history', label: 'History', icon: '◷' },
@@ -157,7 +218,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-
         <div className="sidebar-footer">
           <div className={`ext-status ${extActive ? 'on' : 'off'}`}>
             <span className="ext-dot" />
@@ -169,8 +229,8 @@ export default function App() {
       <main className="main">
         <div className="stats-bar">
           {[
-            { label: 'Total tracked', val: songs.length },
-            { label: 'Total plays', val: songs.reduce((a, s) => a + (s.play_count || 0), 0) },
+            { label: 'Unique songs', val: songs.length },
+            { label: 'Total plays', val: totalPlays },
             { label: 'Played today', val: todayCount },
             { label: 'Favorites', val: favSongs.length },
             { label: 'Playlists', val: playlists.length },
@@ -253,18 +313,96 @@ export default function App() {
               ? <Empty icon="📊" title="No data yet" sub="Stats will appear once you've tracked some songs" />
               : (
                 <div className="stats-layout">
+                  <div className="stats-card wide">
+                    <h3 className="card-title">Overview</h3>
+                    <div className="overview-grid">
+                      <div className="overview-item">
+                        <div className="overview-val">{listeningHours}h {listeningMins}m</div>
+                        <div className="overview-label">Estimated listening time</div>
+                      </div>
+                      <div className="overview-item">
+                        <div className="overview-val">{streak} {streak === 1 ? 'day' : 'days'}</div>
+                        <div className="overview-label">Current streak 🔥</div>
+                      </div>
+                      <div className="overview-item">
+                        <div className="overview-val">{DAY_FULL[mostActiveDay]}</div>
+                        <div className="overview-label">Most active day</div>
+                      </div>
+                      <div className="overview-item">
+                        <div className="overview-val">{Math.round(totalPlays / Math.max(daySet.size, 1) * 10) / 10}</div>
+                        <div className="overview-label">Avg plays per day</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="stats-card wide">
+                    <h3 className="card-title">Last 7 days</h3>
+                    <div className="bar-chart">
+                      {last7Days.map((d, i) => (
+                        <div className="bar-chart-col" key={i}>
+                          <div className="bar-chart-track">
+                            <div className="bar-chart-fill" style={{ height: `${Math.round(d.count / max7 * 100)}%` }} title={`${d.count} plays`} />
+                          </div>
+                          <div className="bar-chart-label">{d.label}</div>
+                          <div className="bar-chart-val">{d.count || ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="stats-card">
+                    <h3 className="card-title">Last 4 weeks</h3>
+                    <div className="bar-chart">
+                      {last4Weeks.map((w, i) => (
+                        <div className="bar-chart-col" key={i}>
+                          <div className="bar-chart-track">
+                            <div className="bar-chart-fill" style={{ height: `${Math.round(w.count / max4w * 100)}%` }} title={`${w.count} plays`} />
+                          </div>
+                          <div className="bar-chart-label">{w.label}</div>
+                          <div className="bar-chart-val">{w.count || ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="stats-card">
+                    <h3 className="card-title">Most active day of week</h3>
+                    <div className="bar-chart">
+                      {dowMap.map((val, i) => (
+                        <div className="bar-chart-col" key={i}>
+                          <div className="bar-chart-track">
+                            <div className="bar-chart-fill"
+                              style={{ height: `${Math.round(val / maxDow * 100)}%`, background: i === mostActiveDay ? '#e84a3a' : 'rgba(232,74,58,0.4)' }}
+                              title={`${val} plays`} />
+                          </div>
+                          <div className="bar-chart-label" style={{ color: i === mostActiveDay ? '#e84a3a' : undefined }}>{DAY_NAMES[i]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="stats-card">
                     <h3 className="card-title">Top songs</h3>
                     {topSongs.map(s => (
                       <div className="bar-row" key={s.id}>
                         <span className="bar-label" title={s.title}>{s.title}</span>
-                        <div className="bar-track">
-                          <div className="bar-fill" style={{ width: `${Math.round(s.play_count / maxPlays * 100)}%` }} />
-                        </div>
+                        <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.round(s.play_count / maxPlays * 100)}%` }} /></div>
                         <span className="bar-val">{s.play_count}x</span>
                       </div>
                     ))}
                   </div>
+
+                  <div className="stats-card">
+                    <h3 className="card-title">Top artists / channels</h3>
+                    {topChannels.map(([ch, count]) => (
+                      <div className="bar-row" key={ch}>
+                        <span className="bar-label" title={ch}>{ch}</span>
+                        <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.round(count / maxChannel * 100)}%`, background: '#3b8ae8' }} /></div>
+                        <span className="bar-val">{count}x</span>
+                      </div>
+                    ))}
+                  </div>
+
                   <div className="stats-card">
                     <h3 className="card-title">Genres</h3>
                     <div className="genre-list">
@@ -272,23 +410,19 @@ export default function App() {
                         <div className="genre-row" key={g}>
                           <span className="genre-dot" style={{ background: GENRE_COLORS[g] || '#666' }} />
                           <span className="genre-name">{GENRE_EMOJIS[g] || '🎵'} {g}</span>
-                          <div className="bar-track">
-                            <div className="bar-fill" style={{ width: `${Math.round(c / totalGenre * 100)}%`, background: GENRE_COLORS[g] || '#666' }} />
-                          </div>
+                          <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.round(c / totalGenre * 100)}%`, background: GENRE_COLORS[g] || '#666' }} /></div>
                           <span className="bar-val">{Math.round(c / totalGenre * 100)}%</span>
                         </div>
                       ))}
                     </div>
                   </div>
+
                   <div className="stats-card wide">
                     <h3 className="card-title">Listening by hour</h3>
                     <div className="heatmap">
                       {hourMap.map((h, i) => {
                         const alpha = h === 0 ? 0.05 : 0.1 + (h / maxHour) * 0.85;
-                        return (
-                          <div key={i} className="heat-cell" title={`${i}:00 — ${h} plays`}
-                            style={{ background: `rgba(232,74,58,${alpha.toFixed(2)})` }} />
-                        );
+                        return <div key={i} className="heat-cell" title={`${i}:00 — ${h} plays`} style={{ background: `rgba(232,74,58,${alpha.toFixed(2)})` }} />;
                       })}
                     </div>
                     <div className="heat-labels">
@@ -300,7 +434,6 @@ export default function App() {
           </div>
         )}
       </main>
-
       {toast && <div className="toast animate-in">{toast}</div>}
     </div>
   );
@@ -314,9 +447,7 @@ function SongList({ songs, onFav }) {
           <div className="song-emoji">{GENRE_EMOJIS[s.genre] || '🎵'}</div>
           <div className="song-info">
             <div className="song-title">{s.title}</div>
-            <div className="song-meta">
-              {s.channel?.replace(' - Topic', '') || 'Unknown'} · {s.genre || 'Music'}
-            </div>
+            <div className="song-meta">{s.channel?.replace(' - Topic', '') || 'Unknown'} · {s.genre || 'Music'}</div>
           </div>
           <span className="play-badge">{s.play_count}×</span>
           <span className="song-time">{timeAgo(s.last_played_at)}</span>
