@@ -170,6 +170,7 @@ export default function App() {
         <div className="stats-bar">
           {[
             { label: 'Total tracked', val: songs.length },
+            { label: 'Total plays', val: songs.reduce((a, s) => a + (s.play_count || 0), 0) },
             { label: 'Played today', val: todayCount },
             { label: 'Favorites', val: favSongs.length },
             { label: 'Playlists', val: playlists.length },
