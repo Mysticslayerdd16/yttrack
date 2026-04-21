@@ -124,6 +124,7 @@
   display: flex;
   gap: 10px;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 .stat-pill {
   flex: 1;
