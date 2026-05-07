@@ -481,7 +481,13 @@ export default function App() {
     if (!error) { fetchPlaylists(); setNewPlName(''); setShowPlInput(false); showToast('Playlist created!'); }
   };
   const handlePeriodChip = (i) => { setPeriodIdx(i); setCustomStart(null); setCustomEnd(null); setShowPicker(false); };
-  const handleDateChange = (start, end) => { setCustomStart(start); setCustomEnd(end); if(start&&end) setPeriodIdx(-1); };
+  const handleDateChange = (start, end) => {   
+    setCustomStart(start);   
+    setCustomEnd(end);   
+    if (start && end) setPeriodIdx(-1);   
+    if (!start && !end) setPeriodIdx(0); 
+  };
+  
   const customLabel = isCustom ? `${formatDate(new Date(customStart))} → ${formatDate(new Date(customEnd))}` : 'Custom range';
 
   const handleJournalSongClick = (song) => { setJourneySong(song); setTimelineTab('journey'); };
