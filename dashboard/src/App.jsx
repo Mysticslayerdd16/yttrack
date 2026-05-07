@@ -15,6 +15,7 @@ const GENRE_EMOJIS = {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const PERIODS = [
   { label: '7 days', days: 7 },
@@ -160,7 +161,7 @@ function JournalView({ songs, onSongClick }) {
     const map = {};
     [...songs].sort((a,b) => new Date(b.last_played_at)-new Date(a.last_played_at)).forEach(s => {
       const key = getDayKey(s.last_played_at);
-      if (!map[key]) map[key] = { label: formatDateFull(s.last_played_at), songs: [] };
+      if (!map[key]) map[key] = { ts: s.last_played_at, songs: [] };
       map[key].songs.push(s);
     });
     return Object.values(map);
@@ -170,25 +171,49 @@ function JournalView({ songs, onSongClick }) {
 
   return (
     <div className="journal">
-      {grouped.map((group, gi) => (
-        <div key={gi} className="journal-group">
-          <div className="journal-date">{group.label}</div>
-          <div className="journal-songs">
-            {group.songs.map((s, si) => (
-              <div key={si} className="journal-row" onClick={() => onSongClick(s)}>
-                <span className="journal-time">{formatTime(s.last_played_at)}</span>
-                <span className="journal-emoji">{GENRE_EMOJIS[s.genre] || '🎵'}</span>
-                <div className="journal-info">
-                  <span className="journal-title">{s.title}</span>
-                  <span className="journal-meta">{s.channel?.replace(' - Topic','') || 'Unknown'}</span>
+      {grouped.map((group, gi) => {
+        const d = new Date(group.ts);
+        const today = new Date();
+        const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+        const isToday = d.toDateString() === today.toDateString();
+        const isYesterday = d.toDateString() === yesterday.toDateString();
+        return (
+          <div key={gi} className="journal-group">
+            <div className="journal-date-header">
+              <span className="journal-date-day">
+                {isToday ? 'Today' : isYesterday ? 'Yest.' : d.getDate()}
+              </span>
+              {!isToday && !isYesterday && (
+                <div className="journal-date-rest">
+                  <span className="journal-date-weekday">{DAY_NAMES[d.getDay()]}</span>
+                  <span className="journal-date-monthyear">{MONTH_NAMES[d.getMonth()]} {d.getFullYear()}</span>
                 </div>
-                <span className="journal-plays">{s.play_count}×</span>
-                <span className="journal-journey-hint">View journey →</span>
-              </div>
-            ))}
+              )}
+              {(isToday || isYesterday) && (
+                <div className="journal-date-rest">
+                  <span className="journal-date-weekday">{DAY_NAMES[d.getDay()]}</span>
+                  <span className="journal-date-monthyear">{d.getDate()} {MONTH_NAMES[d.getMonth()]} {d.getFullYear()}</span>
+                </div>
+              )}
+              <span className="journal-date-count">{group.songs.length} {group.songs.length === 1 ? 'song' : 'songs'}</span>
+            </div>
+            <div className="journal-entries">
+              {group.songs.map((s, si) => (
+                <div key={si} className="journal-entry" onClick={() => onSongClick(s)}>
+                  <span className="journal-entry-time">{formatTime(s.last_played_at)}</span>
+                  <span className="journal-entry-emoji">{GENRE_EMOJIS[s.genre] || '🎵'}</span>
+                  <div className="journal-entry-info">
+                    <span className="journal-entry-title">{s.title}</span>
+                    <span className="journal-entry-meta">{s.channel?.replace(' - Topic','') || 'Unknown'} · {s.genre || 'Music'}</span>
+                  </div>
+                  <span className="journal-entry-plays">{s.play_count}×</span>
+                  <span className="journal-hint">journey →</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -233,7 +258,7 @@ function ActivityView({ songs }) {
     if (count === 0) return 'rgba(255,255,255,0.04)';
     const intensity = Math.min(count / maxCount, 1);
     const alpha = 0.15 + intensity * 0.85;
-    return `rgba(232,74,58,${alpha.toFixed(2)})`;
+    return `rgba(108,142,247,${alpha.toFixed(2)})`;
   };
 
   return (
@@ -481,13 +506,7 @@ export default function App() {
     if (!error) { fetchPlaylists(); setNewPlName(''); setShowPlInput(false); showToast('Playlist created!'); }
   };
   const handlePeriodChip = (i) => { setPeriodIdx(i); setCustomStart(null); setCustomEnd(null); setShowPicker(false); };
-  const handleDateChange = (start, end) => {   
-    setCustomStart(start);   
-    setCustomEnd(end);   
-    if (start && end) setPeriodIdx(-1);   
-    if (!start && !end) setPeriodIdx(0); 
-  };
-  
+  const handleDateChange = (start, end) => { setCustomStart(start); setCustomEnd(end); if(start&&end) setPeriodIdx(-1); };
   const customLabel = isCustom ? `${formatDate(new Date(customStart))} → ${formatDate(new Date(customEnd))}` : 'Custom range';
 
   const handleJournalSongClick = (song) => { setJourneySong(song); setTimelineTab('journey'); };
@@ -586,7 +605,7 @@ export default function App() {
                 <div className="stats-card"><h3 className="card-title">Top artists / channels</h3>{topChannels.map(([ch,count])=>(<div className="bar-row" key={ch}><span className="bar-label" title={ch}>{ch}</span><div className="bar-track"><div className="bar-fill" style={{width:`${Math.round(count/maxChannel*100)}%`,background:'#3b8ae8'}}/></div><span className="bar-val">{count}x</span></div>))}</div>
                 <div className="stats-card"><h3 className="card-title">Genres</h3><div className="genre-list">{genreEntries.map(([g,c])=>(<div className="genre-row" key={g}><span className="genre-dot" style={{background:GENRE_COLORS[g]||'#666'}}/><span className="genre-name">{GENRE_EMOJIS[g]||'🎵'} {g}</span><div className="bar-track"><div className="bar-fill" style={{width:`${Math.round(c/totalGenre*100)}%`,background:GENRE_COLORS[g]||'#666'}}/></div><span className="bar-val">{Math.round(c/totalGenre*100)}%</span></div>))}</div></div>
                 <div className="stats-card wide chord-insights-card"><h3 className="card-title">🎹 Chord Insights <span className="chord-coming-soon">Coming soon</span></h3><div className="chord-insights-placeholder"><div className="chord-insights-row">{[['Most common key','—'],['Most common progression','—'],['Avg BPM','—'],[`Songs with chords`,`0 / ${periodSongs.length}`]].map(([label,val])=>(<div className="chord-insight-item" key={label}><div className="chord-insight-label">{label}</div><div className="chord-insight-val">{val}</div></div>))}</div><p className="chord-insights-sub">Piano chord data will appear here once the feature is enabled.</p></div></div>
-                <div className="stats-card wide"><h3 className="card-title">Listening by hour</h3><div className="heatmap">{hourMap.map((h,i)=>{const alpha=h===0?0.05:0.1+(h/maxHour)*0.85;return<div key={i} className="heat-cell" title={`${i}:00 — ${h} plays`} style={{background:`rgba(232,74,58,${alpha.toFixed(2)})`}}/>;})}</div><div className="heat-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span></div></div>
+                <div className="stats-card wide"><h3 className="card-title">Listening by hour</h3><div className="heatmap">{hourMap.map((h,i)=>{const alpha=h===0?0.05:0.1+(h/maxHour)*0.85;return<div key={i} className="heat-cell" title={`${i}:00 — ${h} plays`} style={{background:`rgba(108,142,247,${alpha.toFixed(2)})`}}/>;})}</div><div className="heat-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span></div></div>
               </div>
             )}
           </div>
