@@ -54,3 +54,8 @@ input, button, select { font-family: var(--ff-head); }
 @keyframes shimmer { from { background-position: -200% center; } to { background-position: 200% center; } }
 
 .animate-in { animation: fadeIn 0.25s ease forwards; }
+
+@font-face {
+  font-family: 'HerbertCooper';
+  src: url('/HerbertCooper.ttf') format('truetype');
+}
