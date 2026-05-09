@@ -370,7 +370,6 @@ function getWeekKey(ts) {
   return `${d.getFullYear()}-W${week}`;
 }
 function isToday(ts) { return new Date(ts).toDateString() === new Date().toDateString(); }
-function isThisWeek(ts) { return Date.now() - new Date(ts).getTime() < 604800000; }
 function formatDate(d) { return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
 function sameDay(a, b) { return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear(); }
 
@@ -446,7 +445,7 @@ function generateInsights(songs, periodSongs, customRange) {
   const peakHour = hourMap.indexOf(Math.max(...hourMap));
   const peakLabel = peakHour === 0 ? '12 AM' : peakHour < 12 ? `${peakHour} AM` : peakHour === 12 ? '12 PM' : `${peakHour - 12} PM`;
   const timeOfDay = peakHour >= 5 && peakHour < 12 ? 'morning' : peakHour >= 12 && peakHour < 17 ? 'afternoon' : peakHour >= 17 && peakHour < 21 ? 'evening' : 'late night';
-  insights.push({ icon: peakHour >= 22 || peakHour < 5 ? '🌙' : peakHour < 12 ? '☀️' : peakHour < 17 ? '🌤️' : '🌆', title: `You\'re a ${timeOfDay} listener`, sub: `Peak listening around ${peakLabel}` });
+  insights.push({ icon: peakHour >= 22 || peakHour < 5 ? '🌙' : peakHour < 12 ? '☀️' : peakHour < 17 ? '🌤️' : '🌆', title: `You're a ${timeOfDay} listener`, sub: `Peak listening around ${peakLabel}` });
   const top = [...periodSongs].sort((a, b) => b.play_count - a.play_count)[0];
   if (top && top.play_count > 1) insights.push({ icon: '🔁', title: 'Most replayed', sub: `"${top.title}" — played ${top.play_count}× in this period` });
   if (!customRange) {
