@@ -57,5 +57,5 @@ input, button, select { font-family: var(--ff-head); }
 
 @font-face {
   font-family: 'HerbertCooper';
-  src: url('%PUBLIC_URL%/HerbertCooper.ttf') format('truetype');
+  src: url('./HerbertCooper.ttf') format('truetype');
 }
