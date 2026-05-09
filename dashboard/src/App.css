@@ -404,7 +404,7 @@
 /* ── Book Journal ─────────────────────────────────── */
 @font-face {
   font-family: 'HerbertCooper';
-  src: url('/HerbertCooper.ttf') format('truetype');
+  src: url('%PUBLIC_URL%/HerbertCooper.ttf') format('truetype');
 }
 
 .book-scene { display: flex; flex-direction: column; align-items: center; padding: 1rem 0 2rem; }
